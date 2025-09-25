@@ -124,3 +124,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Custom styles for Markdown content in cards */
+  .markdown-content {
+    @apply text-foreground;
+  }
+  
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3,
+  .markdown-content h4 {
+    @apply text-foreground font-semibold;
+  }
+  
+  .markdown-content p {
+    @apply text-foreground leading-relaxed;
+  }
+  
+  .markdown-content strong {
+    @apply font-semibold text-foreground;
+  }
+  
+  .markdown-content ul,
+  .markdown-content ol {
+    @apply text-foreground;
+  }
+  
+  .markdown-content code {
+    @apply bg-muted text-foreground px-1.5 py-0.5 rounded text-sm font-mono;
+  }
+}

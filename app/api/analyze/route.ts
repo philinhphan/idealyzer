@@ -104,7 +104,23 @@ Additional File Content: ${fileContent}
 
     const { text: evaluation } = await generateText({
       model: openai("gpt-4o"),
-      prompt: `Provide a comprehensive evaluation of this startup idea, including market potential, competitive advantages, and key challenges: ${ideaContext}`,
+      prompt: `Provide a comprehensive evaluation of this startup idea using Markdown formatting. Include:
+      
+      ## Market Potential
+      Analyze the market size, growth trends, and opportunity.
+      
+      ## Competitive Advantages
+      Identify unique value propositions and differentiators.
+      
+      ## Key Challenges
+      Outline major risks and obstacles.
+      
+      ## Implementation Considerations
+      Discuss technical, operational, and strategic factors.
+      
+      Use bullet points, bold text, and proper formatting for readability.
+      
+      Startup idea: ${ideaContext}`,
     })
 
     // Generate pros and cons
@@ -114,7 +130,7 @@ Additional File Content: ${fileContent}
         pros: z.array(z.string()),
         cons: z.array(z.string()),
       }),
-      prompt: `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons: ${ideaContext}`,
+      prompt: `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons. Use Markdown formatting with **bold** for key terms and clear, specific descriptions: ${ideaContext}`,
     })
 
     // Generate SWOT Analysis
