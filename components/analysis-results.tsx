@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Markdown } from "@/components/ui/markdown"
 import {
   BarChart,
   Bar,
@@ -173,7 +172,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       <div className="font-semibold">{result.frameworks.bcg.marketShare}%</div>
                     </div>
                   </div>
-                  <Markdown className="text-sm text-muted-foreground">{result.frameworks.bcg.reasoning}</Markdown>
+                  <p className="text-sm text-muted-foreground">{result.frameworks.bcg.reasoning}</p>
                 </div>
               </CardContent>
             </Card>
@@ -217,7 +216,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                   {result.pros.map((pro, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <Markdown className="flex-1 text-sm">{pro}</Markdown>
+                      <span className="text-sm">{pro}</span>
                     </li>
                   ))}
                 </ul>
@@ -236,7 +235,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                   {result.cons.map((con, index) => (
                     <li key={index} className="flex items-start gap-2">
                       <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                      <Markdown className="flex-1 text-sm">{con}</Markdown>
+                      <span className="text-sm">{con}</span>
                     </li>
                   ))}
                 </ul>
@@ -250,7 +249,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
               <CardTitle>Detailed Evaluation</CardTitle>
             </CardHeader>
             <CardContent>
-              <Markdown className="text-sm">{result.evaluation}</Markdown>
+              <p className="text-sm leading-relaxed">{result.evaluation}</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -271,7 +270,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       {result.frameworks.swot.strengths.map((item, index) => (
                         <li key={index} className="text-sm flex items-start gap-2">
                           <CheckCircle className="h-3 w-3 text-green-500 mt-1 flex-shrink-0" />
-                          <Markdown className="flex-1 text-sm">{item}</Markdown>
+                          {item}
                         </li>
                       ))}
                     </ul>
@@ -282,7 +281,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       {result.frameworks.swot.opportunities.map((item, index) => (
                         <li key={index} className="text-sm flex items-start gap-2">
                           <TrendingUp className="h-3 w-3 text-blue-500 mt-1 flex-shrink-0" />
-                          <Markdown className="flex-1 text-sm">{item}</Markdown>
+                          {item}
                         </li>
                       ))}
                     </ul>
@@ -295,7 +294,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       {result.frameworks.swot.weaknesses.map((item, index) => (
                         <li key={index} className="text-sm flex items-start gap-2">
                           <AlertCircle className="h-3 w-3 text-yellow-500 mt-1 flex-shrink-0" />
-                          <Markdown className="flex-1 text-sm">{item}</Markdown>
+                          {item}
                         </li>
                       ))}
                     </ul>
@@ -306,7 +305,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       {result.frameworks.swot.threats.map((item, index) => (
                         <li key={index} className="text-sm flex items-start gap-2">
                           <XCircle className="h-3 w-3 text-red-500 mt-1 flex-shrink-0" />
-                          <Markdown className="flex-1 text-sm">{item}</Markdown>
+                          {item}
                         </li>
                       ))}
                     </ul>
@@ -535,9 +534,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
               <CardTitle>Elevator Pitch</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="italic">
-                <Markdown className="text-sm">"{result.recommendations.elevatorPitch}"</Markdown>
-              </div>
+              <p className="text-sm leading-relaxed italic">"{result.recommendations.elevatorPitch}"</p>
             </CardContent>
           </Card>
 
@@ -553,7 +550,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                     <Badge variant="outline" className="mt-0.5">
                       {index + 1}
                     </Badge>
-                    <Markdown className="flex-1 text-sm">{step}</Markdown>
+                    <span className="text-sm">{step}</span>
                   </li>
                 ))}
               </ol>
@@ -570,7 +567,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                 {result.recommendations.improvements.map((improvement, index) => (
                   <li key={index} className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <Markdown className="flex-1 text-sm">{improvement}</Markdown>
+                    <span className="text-sm">{improvement}</span>
                   </li>
                 ))}
               </ul>
@@ -594,7 +591,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"

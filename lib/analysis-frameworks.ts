@@ -78,18 +78,13 @@ export const ANALYSIS_PROMPTS = {
 - Opportunities: External positive factors
 - Threats: External negative factors
 
-For each point, use Markdown formatting with **bold** for key terms and clear, specific descriptions. Provide 3-5 specific points for each category.`,
+Provide 3-5 specific points for each category.`,
 
   bcg: `Analyze this startup idea using the BCG Matrix. Determine:
 - Market growth rate (high/low)
 - Relative market share (high/low)
 - Category classification (Star, Cash Cow, Question Mark, or Dog)
 - Reasoning for the classification
-
-For the reasoning, use Markdown formatting with:
-- **Bold** for key points
-- Bullet points for multiple factors
-- Clear explanations of market dynamics
 
 Provide numerical estimates where possible.`,
 
@@ -115,7 +110,7 @@ Provide scores and detailed reasoning for each metric.`,
   recommendations: `Based on this startup idea analysis, provide:
 - 5 potential startup names
 - Brand wheel (mission, vision, 3-5 brand values, 3-5 personality traits)
-- Elevator pitch (30-second version) - make it compelling and use Markdown formatting with **bold** for key value propositions
+- Elevator pitch (30-second version)
 - 5-step action plan for next 100 days
 - 3-5 key improvements or alternatives to consider`,
 }
