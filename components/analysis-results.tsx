@@ -8,6 +8,13 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   BarChart,
   Bar,
   XAxis,
@@ -36,8 +43,14 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  ChevronDown,
+  FileText,
+  FileSpreadsheet,
+  FileJson,
 } from "lucide-react"
 import type { AnalysisResult } from "@/lib/analysis-frameworks"
+import { exportToPDFImproved as exportToPDF, exportToJSON, exportToCSV } from "@/lib/pdf-export-improved"
+import { useToast } from "@/components/ui/use-toast"
 
 interface AnalysisResultsProps {
   result: AnalysisResult
@@ -46,6 +59,8 @@ interface AnalysisResultsProps {
 
 export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
   const [activeTab, setActiveTab] = useState("overview")
+  const [isExporting, setIsExporting] = useState(false)
+  const { toast } = useToast()
 
   // Prepare chart data
   const metricsData = [
@@ -87,42 +102,185 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
     }
   }
 
+  const handleExportPDF = async () => {
+    setIsExporting(true)
+    try {
+      const result_export = await exportToPDF(result, ideaTitle, {
+        filename: `${ideaTitle.replace(/[^a-zA-Z0-9]/g, '_')}_analysis.pdf`,
+        quality: 1.0,
+        format: 'a4',
+        orientation: 'portrait'
+      })
+
+      if (result_export.success) {
+        toast({
+          title: "PDF Export Successful",
+          description: `Analysis exported as ${result_export.filename}`,
+        })
+      } else {
+        toast({
+          title: "Export Failed",
+          description: result_export.error || "Failed to export PDF",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Export Error",
+        description: "An unexpected error occurred while exporting PDF",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleExportJSON = () => {
+    try {
+      const result_export = exportToJSON(result, ideaTitle)
+      if (result_export.success) {
+        toast({
+          title: "JSON Export Successful",
+          description: `Analysis exported as ${result_export.filename}`,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Export Error",
+        description: "Failed to export JSON file",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleExportCSV = () => {
+    try {
+      const result_export = exportToCSV(result, ideaTitle)
+      if (result_export.success) {
+        toast({
+          title: "CSV Export Successful",
+          description: `Analysis exported as ${result_export.filename}`,
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Export Error",
+        description: "Failed to export CSV file",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${ideaTitle} - Business Analysis`,
+          text: result.summary,
+          url: window.location.href
+        })
+        toast({
+          title: "Shared Successfully",
+          description: "Analysis shared successfully",
+        })
+      } catch (error) {
+        // User cancelled sharing or error occurred
+        if (error instanceof Error && error.name !== 'AbortError') {
+          // Fallback to copying URL to clipboard
+          await navigator.clipboard.writeText(window.location.href)
+          toast({
+            title: "Link Copied",
+            description: "Analysis link copied to clipboard",
+          })
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      try {
+        await navigator.clipboard.writeText(window.location.href)
+        toast({
+          title: "Link Copied",
+          description: "Analysis link copied to clipboard",
+        })
+      } catch (error) {
+        toast({
+          title: "Share Failed",
+          description: "Unable to share or copy link",
+          variant: "destructive",
+        })
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-balance">{ideaTitle}</h1>
-          <p className="text-muted-foreground mt-2">{result.summary}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-lg px-4 py-2">
-            Quality Score:{" "}
-            <span className={`ml-2 font-bold ${getScoreColor(result.qualityScore)}`}>{result.qualityScore}/10</span>
-          </Badge>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button variant="outline" size="sm">
-            <Share className="h-4 w-4 mr-2" />
-            Share
-          </Button>
+      <div className="space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl lg:text-3xl font-bold text-balance break-words">{ideaTitle}</h1>
+            <p className="text-muted-foreground mt-2 text-sm lg:text-base line-clamp-3 lg:line-clamp-none">{result.summary}</p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 lg:flex-shrink-0">
+            <Badge variant="outline" className="text-sm lg:text-lg px-3 lg:px-4 py-1 lg:py-2 whitespace-nowrap">
+              Quality Score:{" "}
+              <span className={`ml-2 font-bold ${getScoreColor(result.qualityScore)}`}>{result.qualityScore}/10</span>
+            </Badge>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isExporting}
+                    className="min-w-[100px]"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Exporting...' : 'Export'}
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={handleExportPDF} disabled={isExporting}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportJSON}>
+                    <FileJson className="h-4 w-4 mr-2" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportCSV}>
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleShare}
+                className="min-w-[80px]"
+              >
+                <Share className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="frameworks">Frameworks</TabsTrigger>
-          <TabsTrigger value="metrics">Metrics</TabsTrigger>
-          <TabsTrigger value="business-model">Business Model</TabsTrigger>
-          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
-          <TabsTrigger value="budget">Budget</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsTrigger value="overview" className="text-xs lg:text-sm">Overview</TabsTrigger>
+          <TabsTrigger value="frameworks" className="text-xs lg:text-sm">Frameworks</TabsTrigger>
+          <TabsTrigger value="metrics" className="text-xs lg:text-sm">Metrics</TabsTrigger>
+          <TabsTrigger value="business-model" className="text-xs lg:text-sm">Business</TabsTrigger>
+          <TabsTrigger value="recommendations" className="text-xs lg:text-sm">Recommendations</TabsTrigger>
+          <TabsTrigger value="budget" className="text-xs lg:text-sm">Budget</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
             {/* Key Metrics */}
             <Card>
               <CardHeader>
@@ -203,7 +361,7 @@ export function AnalysisResults({ result, ideaTitle }: AnalysisResultsProps) {
           </div>
 
           {/* Pros and Cons */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-green-600">
