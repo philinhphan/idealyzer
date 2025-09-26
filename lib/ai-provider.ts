@@ -61,7 +61,7 @@ export function getVisionModel() {
  */
 export function getImageAnalysisConfig() {
   const provider = getAIProvider()
-  
+
   if (provider.name === 'anthropic') {
     return {
       maxImageSize: 5 * 1024 * 1024, // 5MB limit for Anthropic
@@ -69,7 +69,7 @@ export function getImageAnalysisConfig() {
       maxImages: 20 // Claude supports up to 20 images per request
     }
   }
-  
+
   // OpenAI configuration
   return {
     maxImageSize: 20 * 1024 * 1024, // 20MB limit for OpenAI
