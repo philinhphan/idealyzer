@@ -19,12 +19,21 @@ A comprehensive platform for evaluating startup ideas using AI-powered analysis 
    cp .env.example .env.local
    \`\`\`
 
-2. Add your OpenAI API key to `.env.local`:
+2. Add your AI provider API key to `.env.local`:
+
+   **Option 1: Anthropic Claude (Recommended)**
+   \`\`\`env
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
+   \`\`\`
+   Get your API key from [Anthropic Console](https://console.anthropic.com/)
+
+   **Option 2: OpenAI GPT-4 (Fallback)**
    \`\`\`env
    OPENAI_API_KEY=your_openai_api_key_here
    \`\`\`
-
    Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
+
+   **Note**: The system will automatically use Anthropic Claude if available, otherwise fall back to OpenAI. You only need one API key.
 
 ### Installation
 
@@ -59,6 +68,6 @@ A comprehensive platform for evaluating startup ideas using AI-powered analysis 
 ## Technology Stack
 
 - **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **AI**: Vercel AI SDK with OpenAI GPT-4
+- **AI**: Vercel AI SDK with Anthropic Claude 3.5 Sonnet (primary) and OpenAI GPT-4 (fallback)
 - **Charts**: Recharts for data visualization
 - **UI Components**: shadcn/ui component library
