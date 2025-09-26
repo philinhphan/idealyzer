@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateObject, generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { anthropic } from "@ai-sdk/anthropic"
 import { z } from "zod"
 import { ANALYSIS_PROMPTS, type AnalysisResult } from "@/lib/analysis-frameworks"
 
@@ -53,9 +53,9 @@ const RecommendationsSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables." },
+        { error: "Anthropic API key not configured. Please add ANTHROPIC_API_KEY to your environment variables." },
         { status: 500 },
       )
     }
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     const concept = formData.get("concept") as string
     const background = JSON.parse((formData.get("background") as string) || "{}")
     const source = formData.get("source") as string
+    const researchData = JSON.parse((formData.get("researchData") as string) || "[]")
 
     // Process uploaded files (simplified for demo)
     const files = formData.getAll("files") as File[]
@@ -82,6 +83,13 @@ export async function POST(request: NextRequest) {
       // TODO: Add PDF parsing and image analysis
     }
 
+    // Format research data for context
+    const researchContext = researchData.length > 0
+      ? `\n\nRELEVANT RESEARCH PAPERS:\n${researchData.map((research: any) =>
+          `- ${research.title} (${research.year}) by ${research.authors}\n  Description: ${research.description}\n  Subjects: ${research.subjects.join(', ')}`
+        ).join('\n')}`
+      : ''
+
     // Construct comprehensive idea context
     const ideaContext = `
 STARTUP IDEA ANALYSIS REQUEST
@@ -93,61 +101,77 @@ Value Proposition: ${valueProposition}
 Implementation Concept: ${concept}
 Background: ${JSON.stringify(background)}
 Source: ${source}
-Additional File Content: ${fileContent}
+Additional File Content: ${fileContent}${researchContext}
     `.trim()
 
     // Generate basic summary and evaluation
+    const summaryPrompt = researchData.length > 0
+      ? `Provide a brief 2-3 sentence summary of this startup idea, incorporating insights from the relevant research papers provided: ${ideaContext}`
+      : `Provide a brief 2-3 sentence summary of this startup idea: ${ideaContext}`
+
     const { text: summary } = await generateText({
-      model: openai("gpt-4o"),
-      prompt: `Provide a brief 2-3 sentence summary of this startup idea: ${ideaContext}`,
+      model: anthropic("claude-3-5-sonnet-20241022"),
+      prompt: summaryPrompt,
     })
 
+    const evaluationPrompt = researchData.length > 0
+      ? `Provide a comprehensive evaluation of this startup idea, including market potential, competitive advantages, and key challenges. Pay special attention to how the provided research papers support or challenge the idea's viability: ${ideaContext}`
+      : `Provide a comprehensive evaluation of this startup idea, including market potential, competitive advantages, and key challenges: ${ideaContext}`
+
     const { text: evaluation } = await generateText({
-      model: openai("gpt-4o"),
-      prompt: `Provide a comprehensive evaluation of this startup idea, including market potential, competitive advantages, and key challenges: ${ideaContext}`,
+      model: anthropic("claude-3-5-sonnet-20241022"),
+      prompt: evaluationPrompt,
     })
 
     // Generate pros and cons
+    const prosConsPrompt = researchData.length > 0
+      ? `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons. Consider how the research papers provided support or challenge different aspects: ${ideaContext}`
+      : `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons: ${ideaContext}`
+
     const { object: prosConsResult } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: z.object({
         pros: z.array(z.string()),
         cons: z.array(z.string()),
       }),
-      prompt: `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons: ${ideaContext}`,
+      prompt: prosConsPrompt,
     })
 
     // Generate SWOT Analysis
+    const swotPrompt = researchData.length > 0
+      ? `${ANALYSIS_PROMPTS.swot}\n\nWhen analyzing, pay special attention to how the provided research papers inform each aspect of the SWOT analysis.\n\nIdea: ${ideaContext}`
+      : `${ANALYSIS_PROMPTS.swot}\n\nIdea: ${ideaContext}`
+
     const { object: swotAnalysis } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: SWOTSchema,
-      prompt: `${ANALYSIS_PROMPTS.swot}\n\nIdea: ${ideaContext}`,
+      prompt: swotPrompt,
     })
 
     // Generate BCG Matrix Analysis
     const { object: bcgAnalysis } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: BCGSchema,
       prompt: `${ANALYSIS_PROMPTS.bcg}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Business Model Canvas
     const { object: businessModel } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: BusinessModelSchema,
       prompt: `${ANALYSIS_PROMPTS.businessModel}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Metrics Analysis
     const { object: metrics } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: MetricsSchema,
       prompt: `${ANALYSIS_PROMPTS.metrics}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Recommendations
     const { object: recommendations } = await generateObject({
-      model: openai("gpt-4o"),
+      model: anthropic("claude-3-5-sonnet-20241022"),
       schema: RecommendationsSchema,
       prompt: `${ANALYSIS_PROMPTS.recommendations}\n\nIdea: ${ideaContext}`,
     })
