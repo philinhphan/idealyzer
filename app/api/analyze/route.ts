@@ -1,8 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateObject, generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import { ANALYSIS_PROMPTS, type AnalysisResult } from "@/lib/analysis-frameworks"
-import { getAIProvider, hasAIProvider } from "@/lib/ai-provider"
 
 // Schema definitions for structured output
 const SWOTSchema = z.object({
@@ -53,15 +53,12 @@ const RecommendationsSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    if (!hasAIProvider()) {
+    if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
-        { error: "No AI provider configured. Please add either ANTHROPIC_API_KEY or OPENAI_API_KEY to your environment variables." },
+        { error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables." },
         { status: 500 },
       )
     }
-
-    const aiProvider = getAIProvider()
-    console.log(`Using AI provider: ${aiProvider.name} with model: ${aiProvider.textModel}`)
 
     const formData = await request.formData()
 
@@ -101,34 +98,18 @@ Additional File Content: ${fileContent}
 
     // Generate basic summary and evaluation
     const { text: summary } = await generateText({
-      model: aiProvider.model(aiProvider.textModel),
+      model: openai("gpt-4o"),
       prompt: `Provide a brief 2-3 sentence summary of this startup idea: ${ideaContext}`,
     })
 
     const { text: evaluation } = await generateText({
-      model: aiProvider.model(aiProvider.textModel),
-      prompt: `Provide a comprehensive evaluation of this startup idea using Markdown formatting. Include:
-      
-      ## Market Potential
-      Analyze the market size, growth trends, and opportunity.
-      
-      ## Competitive Advantages
-      Identify unique value propositions and differentiators.
-      
-      ## Key Challenges
-      Outline major risks and obstacles.
-      
-      ## Implementation Considerations
-      Discuss technical, operational, and strategic factors.
-      
-      Use bullet points, bold text, and proper formatting for readability.
-      
-      Startup idea: ${ideaContext}`,
+      model: openai("gpt-4o"),
+      prompt: `Provide a comprehensive evaluation of this startup idea, including market potential, competitive advantages, and key challenges: ${ideaContext}`,
     })
 
     // Generate pros and cons
     const { object: prosConsResult } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: z.object({
         pros: z.array(z.string()),
         cons: z.array(z.string()),
@@ -138,35 +119,35 @@ Additional File Content: ${fileContent}
 
     // Generate SWOT Analysis
     const { object: swotAnalysis } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: SWOTSchema,
       prompt: `${ANALYSIS_PROMPTS.swot}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate BCG Matrix Analysis
     const { object: bcgAnalysis } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: BCGSchema,
       prompt: `${ANALYSIS_PROMPTS.bcg}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Business Model Canvas
     const { object: businessModel } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: BusinessModelSchema,
       prompt: `${ANALYSIS_PROMPTS.businessModel}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Metrics Analysis
     const { object: metrics } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: MetricsSchema,
       prompt: `${ANALYSIS_PROMPTS.metrics}\n\nIdea: ${ideaContext}`,
     })
 
     // Generate Recommendations
     const { object: recommendations } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
+      model: openai("gpt-4o"),
       schema: RecommendationsSchema,
       prompt: `${ANALYSIS_PROMPTS.recommendations}\n\nIdea: ${ideaContext}`,
     })
