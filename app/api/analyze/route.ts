@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateObject, generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import { ANALYSIS_PROMPTS, type AnalysisResult } from "@/lib/analysis-frameworks"
 import { getAIProvider, getFallbackAIProvider, hasAIProvider, isAuthenticationError } from "@/lib/ai-provider"
@@ -168,12 +167,15 @@ async function performAnalysisWithFallback(ideaContext: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!hasAIProvider()) {
       return NextResponse.json(
-        { error: "OpenAI API key not configured. Please add OPENAI_API_KEY to your environment variables." },
+        { error: "No AI provider configured. Please add either ANTHROPIC_API_KEY or OPENAI_API_KEY to your environment variables." },
         { status: 500 },
       )
     }
+
+    const aiProvider = getAIProvider()
+    console.log(`Using AI provider: ${aiProvider.name} with model: ${aiProvider.textModel}`)
 
     const formData = await request.formData()
 
