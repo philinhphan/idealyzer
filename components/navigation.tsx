@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Lightbulb, Menu, X } from "lucide-react"
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -36,23 +35,6 @@ export function Navigation() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            <div className="flex items-center space-x-3 mr-4 text-sm text-muted-foreground">
-              <span>Proud partner of</span>
-              <Link 
-                href="https://www.innovationrepublic.de" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center hover:opacity-80 transition-opacity"
-              >
-                <Image
-                  src="/innovation-republic-logo.png"
-                  alt="Innovation Republic"
-                  width={120}
-                  height={30}
-                  className="h-6 w-auto"
-                />
-              </Link>
-            </div>
             <Link href="/dashboard">
               <Button variant="ghost" size="sm">
                 Dashboard
