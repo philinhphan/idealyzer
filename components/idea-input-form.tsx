@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Upload, FileText, ImageIcon, X, Plus, Loader2, Search, ExternalLink, Database } from "lucide-react"
+import { Upload, FileText, ImageIcon, X, Plus, Loader2 } from "lucide-react"
 import { useDropzone } from "react-dropzone"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -27,19 +26,6 @@ interface IdeaFormData {
   }
   source: "research" | "design-sprint" | "ideation-workshop" | "other"
   files: File[]
-  researchData?: ResearchItem[]
-}
-
-interface ResearchItem {
-  id: string
-  title: string
-  description: string
-  authors: string
-  doi?: string
-  url: string
-  year?: number
-  subjects: string[]
-  selected: boolean
 }
 
 export function IdeaInputForm() {
@@ -59,16 +45,10 @@ export function IdeaInputForm() {
     },
     source: "other",
     files: [],
-    researchData: [],
   })
 
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3
-
-  // Research-related state
-  const [researchQuery, setResearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<ResearchItem[]>([])
-  const [isSearching, setIsSearching] = useState(false)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setFormData((prev) => ({
@@ -119,62 +99,6 @@ export function IdeaInputForm() {
     }
   }
 
-  const searchMaxPlanckResearch = async () => {
-    if (!researchQuery.trim()) {
-      toast.error("Please enter a search term")
-      return
-    }
-
-    setIsSearching(true)
-    try {
-      const response = await fetch('/api/research/search', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: researchQuery }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Search failed')
-      }
-
-      const results = await response.json()
-      setSearchResults(results.data || [])
-      toast.success(`Found ${results.data?.length || 0} research papers`)
-    } catch (error) {
-      console.error('Research search error:', error)
-      toast.error('Failed to search research. Please try again.')
-    } finally {
-      setIsSearching(false)
-    }
-  }
-
-  const toggleResearchSelection = (id: string) => {
-    setSearchResults(prev =>
-      prev.map(item =>
-        item.id === id ? { ...item, selected: !item.selected } : item
-      )
-    )
-  }
-
-  const addSelectedResearch = () => {
-    const selectedItems = searchResults.filter(item => item.selected)
-    setFormData(prev => ({
-      ...prev,
-      researchData: [...(prev.researchData || []), ...selectedItems],
-    }))
-    setSearchResults(prev => prev.map(item => ({ ...item, selected: false })))
-    toast.success(`Added ${selectedItems.length} research paper(s) to your analysis`)
-  }
-
-  const removeResearchItem = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      researchData: prev.researchData?.filter(item => item.id !== id) || [],
-    }))
-  }
-
   const handleSubmit = async () => {
     setIsAnalyzing(true)
 
@@ -187,7 +111,6 @@ export function IdeaInputForm() {
       submitData.append("concept", formData.concept)
       submitData.append("background", JSON.stringify(formData.background))
       submitData.append("source", formData.source)
-      submitData.append("researchData", JSON.stringify(formData.researchData || []))
 
       formData.files.forEach((file) => {
         submitData.append("files", file)
@@ -227,10 +150,8 @@ export function IdeaInputForm() {
     }
   }
 
-  const renderStep1 = () => {
-    return (
-      <div className="space-y-6">
-      {/* Always visible title and description */}
+  const renderStep1 = () => (
+    <div className="space-y-6">
       <div>
         <Label htmlFor="title" className="text-base font-medium">
           Idea Title *
@@ -257,163 +178,49 @@ export function IdeaInputForm() {
         />
       </div>
 
-      <Tabs defaultValue="manual" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="manual">Upload Files</TabsTrigger>
-          <TabsTrigger value="research" className="gap-2">
-            <Database className="h-4 w-4" />
-            Max Planck Research
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="manual" className="space-y-6 mt-6">
-          <div>
-            <Label className="text-base font-medium">Upload Supporting Files</Label>
-            <div
-              {...getRootProps()}
-              className={`mt-2 border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-                isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
-              }`}
-            >
-              <input {...getInputProps()} />
-              <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
-              {isDragActive ? (
-                <p className="text-primary">Drop the files here...</p>
-              ) : (
-                <div>
-                  <p className="text-foreground font-medium mb-2">Drop files here or click to browse</p>
-                  <p className="text-sm text-muted-foreground">PDFs, images, presentations, or text files</p>
-                </div>
-              )}
+      <div>
+        <Label className="text-base font-medium">Upload Supporting Files</Label>
+        <div
+          {...getRootProps()}
+          className={`mt-2 border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragActive ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+          }`}
+        >
+          <input {...getInputProps()} />
+          <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-4" />
+          {isDragActive ? (
+            <p className="text-primary">Drop the files here...</p>
+          ) : (
+            <div>
+              <p className="text-foreground font-medium mb-2">Drop files here or click to browse</p>
+              <p className="text-sm text-muted-foreground">PDFs, images, presentations, or text files</p>
             </div>
-
-            {formData.files.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {formData.files.map((file, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      {file.type.startsWith("image/") ? (
-                        <ImageIcon className="h-5 w-5 text-primary" />
-                      ) : (
-                        <FileText className="h-5 w-5 text-primary" />
-                      )}
-                      <span className="text-sm font-medium">{file.name}</span>
-                      <span className="text-xs text-muted-foreground">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={() => removeFile(index)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-      </TabsContent>
-
-      <TabsContent value="research" className="space-y-6 mt-6">
-        <div>
-          <Label className="text-base font-medium">
-            Search Max Planck Institute Research
-          </Label>
-          <p className="text-sm text-muted-foreground mb-3">
-            Find existing research papers and datasets to incorporate into your analysis
-          </p>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter keywords (e.g., 'artificial intelligence', 'sustainable energy')"
-              value={researchQuery}
-              onChange={(e) => setResearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && searchMaxPlanckResearch()}
-              className="flex-1"
-            />
-            <Button onClick={searchMaxPlanckResearch} disabled={isSearching}>
-              {isSearching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
+          )}
         </div>
 
-        {searchResults.length > 0 && (
-          <div>
-            <Label className="text-base font-medium">Search Results</Label>
-            <div className="mt-3 space-y-3 max-h-96 overflow-y-auto">
-              {searchResults.map((item) => (
-                <div key={item.id} className="border border-border rounded-lg p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <input
-                          type="checkbox"
-                          checked={item.selected}
-                          onChange={() => toggleResearchSelection(item.id)}
-                          className="rounded"
-                        />
-                        <h4 className="font-medium text-sm">{item.title}</h4>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{item.description}</p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>{item.authors}</span>
-                        <span>{item.year}</span>
-                      </div>
-                      <div className="flex gap-1 mt-2">
-                        {item.subjects.slice(0, 3).map((subject, idx) => (
-                          <span key={idx} className="bg-muted px-2 py-1 rounded text-xs">
-                            {subject}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(item.url, '_blank')}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </div>
+        {formData.files.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {formData.files.map((file, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                <div className="flex items-center space-x-3">
+                  {file.type.startsWith("image/") ? (
+                    <ImageIcon className="h-5 w-5 text-primary" />
+                  ) : (
+                    <FileText className="h-5 w-5 text-primary" />
+                  )}
+                  <span className="text-sm font-medium">{file.name}</span>
+                  <span className="text-xs text-muted-foreground">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
                 </div>
-              ))}
-            </div>
-            <Button
-              onClick={addSelectedResearch}
-              disabled={!searchResults.some(item => item.selected)}
-              className="mt-3 w-full"
-            >
-              Add Selected Research ({searchResults.filter(item => item.selected).length})
-            </Button>
+                <Button variant="ghost" size="sm" onClick={() => removeFile(index)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
           </div>
         )}
-
-        {formData.researchData && formData.researchData.length > 0 && (
-          <div>
-            <Label className="text-base font-medium">Added Research Papers</Label>
-            <div className="mt-3 space-y-2">
-              {formData.researchData.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                  <div>
-                    <h5 className="font-medium text-sm">{item.title}</h5>
-                    <p className="text-xs text-muted-foreground">{item.authors} ({item.year})</p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeResearchItem(item.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </TabsContent>
-    </Tabs>
       </div>
-    )
-  }
+    </div>
+  )
 
   const renderStep2 = () => (
     <div className="space-y-6">
