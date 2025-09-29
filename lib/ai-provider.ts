@@ -41,6 +41,51 @@ export function getAIProvider(): AIProvider {
 }
 
 /**
+ * Get fallback AI provider when primary fails
+ */
+export function getFallbackAIProvider(): AIProvider | null {
+  const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY
+  const hasOpenAIKey = !!process.env.OPENAI_API_KEY
+
+  // If primary is Anthropic, fallback to OpenAI
+  if (hasAnthropicKey && hasOpenAIKey) {
+    return {
+      name: 'openai',
+      model: openai,
+      textModel: 'gpt-4o',
+      objectModel: 'gpt-4o',
+      visionModel: 'gpt-4o'
+    }
+  }
+
+  // If primary is OpenAI, fallback to Anthropic
+  if (hasOpenAIKey && hasAnthropicKey) {
+    return {
+      name: 'anthropic',
+      model: anthropic,
+      textModel: 'claude-3-5-sonnet-20241022',
+      objectModel: 'claude-3-5-sonnet-20241022',
+      visionModel: 'claude-3-5-sonnet-20241022'
+    }
+  }
+
+  return null
+}
+
+/**
+ * Check if an error is an authentication error
+ */
+export function isAuthenticationError(error: any): boolean {
+  return (
+    error?.statusCode === 401 ||
+    error?.message?.includes('invalid x-api-key') ||
+    error?.message?.includes('authentication') ||
+    error?.message?.includes('unauthorized') ||
+    error?.data?.error?.type === 'authentication_error'
+  )
+}
+
+/**
  * Check if any AI provider is configured
  */
 export function hasAIProvider(): boolean {

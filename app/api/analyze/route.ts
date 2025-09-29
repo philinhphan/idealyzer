@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { generateObject, generateText } from "ai"
 import { z } from "zod"
 import { ANALYSIS_PROMPTS, type AnalysisResult } from "@/lib/analysis-frameworks"
-import { getAIProvider, hasAIProvider } from "@/lib/ai-provider"
+import { getAIProvider, getFallbackAIProvider, hasAIProvider, isAuthenticationError } from "@/lib/ai-provider"
 
 // Schema definitions for structured output
 const SWOTSchema = z.object({
@@ -51,6 +51,120 @@ const RecommendationsSchema = z.object({
   improvements: z.array(z.string()),
 })
 
+// Helper function to perform analysis with fallback
+async function performAnalysisWithFallback(ideaContext: string) {
+  let aiProvider = getAIProvider()
+  let usingFallback = false
+
+  const tryAnalysis = async (provider: any) => {
+    // Generate basic summary and evaluation
+    const { text: summary } = await generateText({
+      model: provider.model(provider.textModel),
+      prompt: `Provide a brief 2-3 sentence summary of this startup idea: ${ideaContext}`,
+    })
+
+    const { text: evaluation } = await generateText({
+      model: provider.model(provider.textModel),
+      prompt: `Provide a comprehensive evaluation of this startup idea using Markdown formatting. Include:
+      
+      ## Market Potential
+      Analyze the market size, growth trends, and opportunity.
+      
+      ## Competitive Advantages
+      Identify unique value propositions and differentiators.
+      
+      ## Key Challenges
+      Outline major risks and obstacles.
+      
+      ## Implementation Considerations
+      Discuss technical, operational, and strategic factors.
+      
+      Use bullet points, bold text, and proper formatting for readability.
+      
+      Startup idea: ${ideaContext}`,
+    })
+
+    // Generate pros and cons
+    const { object: prosConsResult } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: z.object({
+        pros: z.array(z.string()),
+        cons: z.array(z.string()),
+      }),
+      prompt: `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons: ${ideaContext}`,
+    })
+
+    // Generate SWOT Analysis
+    const { object: swotAnalysis } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: SWOTSchema,
+      prompt: `${ANALYSIS_PROMPTS.swot}\n\nIdea: ${ideaContext}`,
+    })
+
+    // Generate BCG Matrix Analysis
+    const { object: bcgAnalysis } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: BCGSchema,
+      prompt: `${ANALYSIS_PROMPTS.bcg}\n\nIdea: ${ideaContext}`,
+    })
+
+    // Generate Business Model Canvas
+    const { object: businessModel } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: BusinessModelSchema,
+      prompt: `${ANALYSIS_PROMPTS.businessModel}\n\nIdea: ${ideaContext}`,
+    })
+
+    // Generate Metrics Analysis
+    const { object: metrics } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: MetricsSchema,
+      prompt: `${ANALYSIS_PROMPTS.metrics}\n\nIdea: ${ideaContext}`,
+    })
+
+    // Generate Recommendations
+    const { object: recommendations } = await generateObject({
+      model: provider.model(provider.objectModel),
+      schema: RecommendationsSchema,
+      prompt: `${ANALYSIS_PROMPTS.recommendations}\n\nIdea: ${ideaContext}`,
+    })
+
+    return {
+      summary,
+      evaluation,
+      prosConsResult,
+      swotAnalysis,
+      bcgAnalysis,
+      businessModel,
+      metrics,
+      recommendations,
+    }
+  }
+
+  try {
+    console.log(`Using AI provider: ${aiProvider.name} with model: ${aiProvider.textModel}`)
+    return await tryAnalysis(aiProvider)
+  } catch (error) {
+    console.error(`Primary AI provider (${aiProvider.name}) failed:`, error)
+    
+    // Check if it's an authentication error and we have a fallback
+    if (isAuthenticationError(error)) {
+      const fallbackProvider = getFallbackAIProvider()
+      if (fallbackProvider) {
+        console.log(`Falling back to ${fallbackProvider.name} provider`)
+        usingFallback = true
+        try {
+          return await tryAnalysis(fallbackProvider)
+        } catch (fallbackError) {
+          console.error(`Fallback AI provider (${fallbackProvider.name}) also failed:`, fallbackError)
+          throw fallbackError
+        }
+      }
+    }
+    throw error
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!hasAIProvider()) {
@@ -59,9 +173,6 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       )
     }
-
-    const aiProvider = getAIProvider()
-    console.log(`Using AI provider: ${aiProvider.name} with model: ${aiProvider.textModel}`)
 
     const formData = await request.formData()
 
@@ -99,85 +210,16 @@ Source: ${source}
 Additional File Content: ${fileContent}
     `.trim()
 
-    // Generate basic summary and evaluation
-    const { text: summary } = await generateText({
-      model: aiProvider.model(aiProvider.textModel),
-      prompt: `Provide a brief 2-3 sentence summary of this startup idea: ${ideaContext}`,
-    })
-
-    const { text: evaluation } = await generateText({
-      model: aiProvider.model(aiProvider.textModel),
-      prompt: `Provide a comprehensive evaluation of this startup idea using Markdown formatting. Include:
-      
-      ## Market Potential
-      Analyze the market size, growth trends, and opportunity.
-      
-      ## Competitive Advantages
-      Identify unique value propositions and differentiators.
-      
-      ## Key Challenges
-      Outline major risks and obstacles.
-      
-      ## Implementation Considerations
-      Discuss technical, operational, and strategic factors.
-      
-      Use bullet points, bold text, and proper formatting for readability.
-      
-      Startup idea: ${ideaContext}`,
-    })
-
-    // Generate pros and cons
-    const { object: prosConsResult } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: z.object({
-        pros: z.array(z.string()),
-        cons: z.array(z.string()),
-      }),
-      prompt: `Analyze this startup idea and provide 4-6 key pros and 4-6 key cons: ${ideaContext}`,
-    })
-
-    // Generate SWOT Analysis
-    const { object: swotAnalysis } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: SWOTSchema,
-      prompt: `${ANALYSIS_PROMPTS.swot}\n\nIdea: ${ideaContext}`,
-    })
-
-    // Generate BCG Matrix Analysis
-    const { object: bcgAnalysis } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: BCGSchema,
-      prompt: `${ANALYSIS_PROMPTS.bcg}\n\nIdea: ${ideaContext}`,
-    })
-
-    // Generate Business Model Canvas
-    const { object: businessModel } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: BusinessModelSchema,
-      prompt: `${ANALYSIS_PROMPTS.businessModel}\n\nIdea: ${ideaContext}`,
-    })
-
-    // Generate Metrics Analysis
-    const { object: metrics } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: MetricsSchema,
-      prompt: `${ANALYSIS_PROMPTS.metrics}\n\nIdea: ${ideaContext}`,
-    })
-
-    // Generate Recommendations
-    const { object: recommendations } = await generateObject({
-      model: aiProvider.model(aiProvider.objectModel),
-      schema: RecommendationsSchema,
-      prompt: `${ANALYSIS_PROMPTS.recommendations}\n\nIdea: ${ideaContext}`,
-    })
+    // Perform analysis with automatic fallback
+    const analysisResults = await performAnalysisWithFallback(ideaContext)
 
     // Calculate quality score (weighted average of metrics)
     const qualityScore =
       Math.round(
-        (metrics.desirability * 0.3 +
-          metrics.viability * 0.3 +
-          metrics.feasibility * 0.25 +
-          metrics.sustainability * 0.15) *
+        (analysisResults.metrics.desirability * 0.3 +
+          analysisResults.metrics.viability * 0.3 +
+          analysisResults.metrics.feasibility * 0.25 +
+          analysisResults.metrics.sustainability * 0.15) *
           10,
       ) / 10
 
@@ -202,27 +244,27 @@ Additional File Content: ${fileContent}
     }
 
     const result: AnalysisResult = {
-      summary,
-      pros: prosConsResult.pros,
-      cons: prosConsResult.cons,
-      evaluation,
+      summary: analysisResults.summary,
+      pros: analysisResults.prosConsResult.pros,
+      cons: analysisResults.prosConsResult.cons,
+      evaluation: analysisResults.evaluation,
       frameworks: {
-        swot: swotAnalysis,
-        bcg: bcgAnalysis,
-        businessModel: businessModel,
-        metrics: metrics,
+        swot: analysisResults.swotAnalysis,
+        bcg: analysisResults.bcgAnalysis,
+        businessModel: analysisResults.businessModel,
+        metrics: analysisResults.metrics,
       },
       budgetEstimate: {
         ...budgetEstimate,
         breakdown: budgetBreakdown,
       },
       qualityScore,
-      recommendations,
+      recommendations: analysisResults.recommendations,
     }
 
     return NextResponse.json(result)
   } catch (error) {
     console.error("Analysis error:", error)
-    return NextResponse.json({ error: "Analysis failed" }, { status: 500 })
+    return NextResponse.json({ error: "Analysis failed. Please check your API keys and try again." }, { status: 500 })
   }
 }
