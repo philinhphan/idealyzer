@@ -174,9 +174,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const aiProvider = getAIProvider()
-    console.log(`Using AI provider: ${aiProvider.name} with model: ${aiProvider.textModel}`)
-
     const formData = await request.formData()
 
     // Extract form fields
